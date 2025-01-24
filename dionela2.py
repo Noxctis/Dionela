@@ -1,9 +1,9 @@
 import cv2
 import numpy as np
 
-def video_to_dionela_text_video(
+def video_to_dionela_text_video_horizontal(
     input_video_path,
-    output_video_path="dionela_text_art.mp4",
+    output_video_path="dionela_text_art_horizontal.mp4",
     letters="DIONELA",
     downscale=0.1,
     cell_size=12,
@@ -14,8 +14,9 @@ def video_to_dionela_text_video(
     """
     Convert each frame of a video into a text-art frame using letters from 'letters'.
     The color of each letter is based on the pixel's BGR color in the original frame.
-    The resulting frames are written to an output video file (e.g., MP4).
-
+    Unlike the 'global cycle' version, this code repeats 'letters' horizontally on each row.
+    That is, each row restarts at letters[0].
+    
     Parameters
     ----------
     input_video_path : str
@@ -23,23 +24,21 @@ def video_to_dionela_text_video(
     output_video_path : str
         Path to the output video file (e.g. 'output.mp4').
     letters : str
-        A string of letters to cycle through, e.g. "DIONELA".
+        A string of letters to cycle through horizontally, e.g. "DIONELA".
     downscale : float
-        Factor by which to shrink the original frame (for mapping pixels to text).
-        e.g. 0.1 → 10% of original width/height.
+        Factor by which to shrink the original frame before mapping pixels to text cells.
     cell_size : int
         The size of each "cell" in the final output. Each downscaled pixel
-        will become a cell_size×cell_size block where we draw one letter.
+        becomes a cell_size×cell_size block where we draw one letter.
     font_scale : float
-        The scale for cv2.putText.
+        The font scale for cv2.putText.
     thickness : int
         The thickness for cv2.putText.
     background_threshold : tuple or None
-        (B, G, R) threshold. If set, any pixel whose B, G, R are all <= threshold
-        is treated as "background" and skipped (no letter drawn, cell remains black).
+        (B, G, R) threshold. If set, any pixel whose B, G, R are all <= that threshold
+        is treated as "background" and skipped (the cell remains black).
         e.g. (30,30,30) to skip near-dark pixels for a silhouette effect.
     """
-
     cap = cv2.VideoCapture(input_video_path)
     if not cap.isOpened():
         print(f"Error: Cannot open video {input_video_path}")
@@ -55,7 +54,7 @@ def video_to_dionela_text_video(
     new_w = max(1, int(orig_w * downscale))
     new_h = max(1, int(orig_h * downscale))
 
-    # The output video will have each "downscaled pixel" expanded to a cell of size cell_size x cell_size
+    # The output video will have each downscaled pixel expanded to a cell of size cell_size x cell_size
     out_w = new_w * cell_size
     out_h = new_h * cell_size
 
@@ -64,11 +63,12 @@ def video_to_dionela_text_video(
     print(f"Output text-art video size: {out_w} x {out_h}, FPS: {fps:.2f}")
 
     # Setup output video writer
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # 'mp4v' or 'XVID' etc.
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or 'XVID', 'H264', etc.
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (out_w, out_h))
 
     font = cv2.FONT_HERSHEY_SIMPLEX
     letter_count = len(letters)
+
     frame_index = 0
 
     while True:
@@ -77,81 +77,70 @@ def video_to_dionela_text_video(
             break  # end of video
 
         frame_index += 1
+
         # Downscale the frame
         small_frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
         # Create a black canvas for text-art frame
         text_frame = np.zeros((out_h, out_w, 3), dtype=np.uint8)
 
-        # We'll cycle through letters in row-major order so that horizontally
-        # adjacent cells also get sequential letters in "DIONELA"
-        letter_index = 0
-
         for y in range(new_h):
             for x in range(new_w):
                 b, g, r = small_frame[y, x]
 
-                # If background_threshold is used, skip this pixel if it's "under" the threshold
+                # If using background threshold, skip near-dark (or near some color) pixels
                 if background_threshold is not None:
                     th_b, th_g, th_r = background_threshold
                     if b <= th_b and g <= th_g and r <= th_r:
-                        letter_index += 1
+                        # Don't draw a letter (i.e., cell remains black)
                         continue
 
-                # The letter to draw
-                letter = letters[letter_index % letter_count]
-                letter_index += 1
+                # Choose the letter based on the column only
+                # Each row restarts the cycle at letters[0]
+                letter = letters[x % letter_count]
 
-                # The cell's top-left corner in the output image
+                # Calculate the cell's top-left corner in the output image
                 cell_x = x * cell_size
                 cell_y = y * cell_size
 
-                # Position to put the text (roughly centered in the cell)
-                # Adjust offsets to taste
+                # Position to put the text (roughly near the bottom-left of each cell)
                 text_x = cell_x + 2
                 text_y = cell_y + cell_size - 2
 
-                # Draw the letter with the color (BGR) from the pixel
+                # Draw the letter with the BGR color from the pixel
                 cv2.putText(
                     text_frame,
                     letter,
                     (text_x, text_y),
                     font,
                     font_scale,
-                    (int(b), int(g), int(r)),  # OpenCV is BGR
+                    (int(b), int(g), int(r)),
                     thickness=thickness,
                     lineType=cv2.LINE_AA
                 )
 
-        # Write the generated text frame to output video
         out.write(text_frame)
 
-        # Optional: show progress in console
         if frame_index % 10 == 0:
             print(f"Processing frame {frame_index}/{frame_count}", end='\r')
 
-    print("\nDone processing frames.")
     cap.release()
     out.release()
+    print("\nDone processing frames.")
     print("Output saved to:", output_video_path)
 
 
 if __name__ == "__main__":
-    """
-    Example usage:
-      python dionela_text_art.py
-    (Make sure to install OpenCV first: pip install opencv-python)
-    """
-    input_path = "dionelavideo.mp4"  # Replace with your video file
-    output_path = "dionela_text_art_output.mp4"
-
-    video_to_dionela_text_video(
+    # Example usage:
+    input_path = "input_video.mp4"  # your video
+    output_path = "dionela_text_art_horizontal_repeat.mp4"
+    video_to_dionela_text_video_horizontal(
         input_video_path=input_path,
         output_video_path=output_path,
         letters="DIONELA",
-        downscale=0.2,                # Adjust for performance/visual effect
-        cell_size=12,                 # Each downscaled pixel becomes a 12×12 block in the final video
+        downscale=0.2,       # adjust based on performance and desired resolution
+        cell_size=12,        # each "pixel" becomes a 12x12 cell
         font_scale=0.4,
         thickness=1,
-        background_threshold=(30,30,30)  # e.g., skip near-dark to create silhouette. Set to None to disable
+        background_threshold=(30, 30, 30)  # skip near-dark for silhouette effect; set None to disable
     )
