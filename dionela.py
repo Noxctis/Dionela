@@ -135,7 +135,7 @@ if __name__ == "__main__":
       2. Run in a terminal that supports 24-bit ANSI color.
       3. Enjoy the text-art rendering. (Ctrl+C to quit)
     """
-    input_video = "pmo.mp4"  # <-- replace with your video
+    input_video = "dionelavideo2.mp4"  # <-- replace with your video
     
     print_video_as_text(
         video_path=input_video,
