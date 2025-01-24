@@ -135,12 +135,12 @@ if __name__ == "__main__":
       2. Run in a terminal that supports 24-bit ANSI color.
       3. Enjoy the text-art rendering. (Ctrl+C to quit)
     """
-    input_video = "dionelavideo.mp4"  # <-- replace with your video
+    input_video = "pmo.mp4"  # <-- replace with your video
     
     print_video_as_text(
         video_path=input_video,
         letters="DIONELA",
         downscale=0.1,          # Make this smaller or larger depending on your terminal size
-        fps_limit=30,           # Try 10-15 for stability in the terminal
+        fps_limit=15,           # Try 10-15 for stability in the terminal
         background_threshold=(10,10,10)  # Treat near-black as "transparent" so it looks like a silhouette
     )
