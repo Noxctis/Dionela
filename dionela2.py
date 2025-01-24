@@ -132,7 +132,7 @@ def video_to_dionela_text_video_horizontal(
 
 if __name__ == "__main__":
     # Example usage:
-    input_path = "pmo.mp4"  # your video
+    input_path = "dionelavideo.mp4"  # your video
     output_path = "dionela_text_art_horizontal_repeat.mp4"
     video_to_dionela_text_video_horizontal(
         input_video_path=input_path,
